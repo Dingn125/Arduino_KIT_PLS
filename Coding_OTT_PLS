@@ -1,4 +1,8 @@
 #include <SDI12.h> //Library
+
+#define SERIAL_BAUD 115200 /*!< The baud rate for the output serial port */
+#define DATA_PIN 7         /*!< The pin of the SDI-12 data bus */
+
 SDI12 mySDI12(DATA_PIN); // Define the SDI-12 bus
 
 //SDI 12 commands
