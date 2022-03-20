@@ -39,7 +39,8 @@ void measREFsensor(){
   String rawdata = readsensor();
   mySDI12.clearBuffer();   
   delay(50); 
-
+  Serial.println("rawdata = " +rawdata);
+  delay(100);
   //Decoding string sent from probe
   int p=0;
   int pos[] = {0,0};
@@ -91,7 +92,8 @@ void setup() {
 
 void loop() {
    measREFsensor();
-   Serial.println("RealRefLevel = "+toString(RealRefLevel));
-   Serial.println("Watertemp = "+toString(Watertemp));
+   delay(100);
+   Serial.println("RealRefLevel = "+RealRefLevel);
+   Serial.println("Watertemp = "+Watertemp);
    delay(1000);
 }
