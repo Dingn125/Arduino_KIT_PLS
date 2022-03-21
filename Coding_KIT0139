@@ -1,4 +1,4 @@
-    #define ANALOG_PIN A1
+    #define ANALOG_PIN A2
     #define RANGE 5000 // Depth measuring range 5000mm (for water)
     #define VREF 5000 // ADC's reference voltage on your Arduino,typical value:5000mV
     #define CURRENT_INIT 4.00 // Current @ 0mm (uint: mA)
