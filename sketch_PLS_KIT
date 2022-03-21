@@ -1,0 +1,157 @@
+#include <SDI12.h>  
+    
+    #define ANALOG_PIN A2
+    #define RANGE 5000 // Depth measuring range 5000mm (for water)
+    #define VREF 5000 // ADC's reference voltage on your Arduino,typical value:5000mV
+    #define CURRENT_INIT 4.00 // Current @ 0mm (uint: mA)
+    #define DENSITY_WATER 1  // Pure water density normalized to 1
+    #define PRINT_INTERVAL 1000
+    
+    int16_t dataVoltage;
+    float dataCurrent, depth; //unit:mA
+    unsigned long timepoint_measure;
+
+    #define SERIAL_BAUD 115200    
+    #define DATA_PIN 12        
+    
+    SDI12 mySDI12(DATA_PIN); 
+    
+    //SDI 12 commands
+    #define myComAdress   "?!"    //ask the adress of the probe
+    #define myComId       "0I!"   //ask the identification
+    #define myComMeasure  "0M!"   //ask to start a measurement
+    #define myComSend     "0D0!"  //ask to send the measure
+    #define myComSetUnitCM  "0OSU+1!"  //set the unit
+    #define myComUnit     "0OSU!" //ask for the unit of the measure, +0=m, +1=cm, +2=ft, +3=mbar, +4=psi
+
+
+String readsensor(){ 
+  String sdiResponse = "";
+  delay(30);
+  while(mySDI12.available()){    
+    char c = mySDI12.read();
+    if ((c != '\n') && (c != '\r')) { sdiResponse += c; delay(5); }    
+  }
+  return sdiResponse;
+}
+
+void measREFsensor(){
+  delay(500);      
+  mySDI12.sendCommand(myComMeasure);
+  while(mySDI12.available()){ mySDI12.read();}    
+  delay(1000);    
+  mySDI12.clearBuffer();   
+  delay(500);
+  mySDI12.sendCommand(myComSend);  
+  delay(50);
+  String rawdata = readsensor();
+  mySDI12.clearBuffer();   
+  delay(50); 
+  Serial.println("rawdata = " +rawdata);
+  delay(100);  
+  
+  //Decoding string sent from probe  
+  int p=0;
+  int pos[] = {0,0};
+  for (int z=0 ; z<rawdata.length() ; z++)  {
+    char u = rawdata.charAt(z);
+    if (u == '+' || u == '-') {
+      pos[p] = z ;
+      p++; 
+    } 
+    delay (50);
+  }    
+
+  String RealRefLevel = rawdata.substring(pos[0],pos[1]);  //Water level from the reference sensor (without correction)
+  String Temperature = rawdata.substring(pos[1],rawdata.length()); //Water temperature from the reference sensor
+ 
+  Serial.print("Raw water level:");
+  Serial.print(RealRefLevel);
+  Serial.println("cm");
+  delay(100);  
+
+  Serial.println("Temperature:" +Temperature); 
+  delay(100);  
+                       
+}
+
+void StartRefSensor(){
+  mySDI12.begin();
+  delay(2000); 
+  
+  Serial.print(F("'**** Identification of the sensor: "));
+  mySDI12.sendCommand(myComId);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+  
+  Serial.print(F("'**** Adress of the sensor: "));
+  mySDI12.sendCommand(myComAdress);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+
+  Serial.print(F("'**** Set the unit of the sensor to be cm: "));
+  mySDI12.sendCommand(myComSetUnitCM);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+  
+  Serial.print(F("'**** Unit 0+(0=m, 1=cm, 2=ft, 3=mbar, 4=psi): "));  //If here should be Unit 0+ or Unit +0 ?
+  mySDI12.sendCommand(myComUnit);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+  }
+  
+
+void measKitSensor(){
+  if (millis() - timepoint_measure > PRINT_INTERVAL) {
+        timepoint_measure = millis();
+
+        dataVoltage = analogRead(ANALOG_PIN)/ 1024.0 * VREF;
+        dataCurrent = dataVoltage / 120.0; //Sense Resistor:120ohm
+        depth = (dataCurrent - CURRENT_INIT) * (RANGE/ DENSITY_WATER / 16.0); //Calculate depth from current readings
+
+        if (depth < 0) 
+        {
+          depth = 0.0;
+        }
+  }
+  //Serial print results
+        Serial.print("Kit_depth:");
+        Serial.print(depth);
+        Serial.println("mm");
+        delay(500);
+}
+
+
+void StartKitSensor(){
+      pinMode(ANALOG_PIN, INPUT);
+      timepoint_measure = millis();
+      delay(2000);
+ }
+
+
+    void setup() {
+      Serial.begin(115200);
+      while (!Serial) {
+   ; // wait for serial port to connect. Needed for native USB 
+   }
+      StartRefSensor();
+      StartKitSensor();
+    }
+
+void loop() {
+  for (int i = 0; i <= 1000; i++){
+    measREFsensor();
+    delay(1000);
+    measKitSensor();
+    delay(1000);
+}
+  while(1){}
+}
