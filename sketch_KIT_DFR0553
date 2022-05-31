@@ -1,9 +1,22 @@
 #include <Wire.h>
 #include <DFRobot_ADS1115.h>
 
+#define ANALOG_PIN A2
+#define RANGE 5000 // Depth measuring range 5000mm (for water)
+#define VREF 5000 // ADC's reference voltage on your Arduino,typical value:5000mV
+#define CURRENT_INIT 4.00 // Current @ 0mm (uint: mA)
+#define DENSITY_WATER 1  // Pure water density normalized to 1
+#define PRINT_INTERVAL 1000
+
 DFRobot_ADS1115 ads;
 
-void setup(void)
+void StartKitSensor(){
+      pinMode(ANALOG_PIN, INPUT);
+      timepoint_measure = millis();
+      delay(300);
+ }
+
+void setup()
 {
     Serial.begin(115200);
     ads.setAddr_ADS1115(ADS1115_IIC_ADDRESS0);   // 0x48
@@ -14,7 +27,7 @@ void setup(void)
     ads.init();
 }
 
-void loop(void)
+void loop()
 {
     if (ads.checkADS1115())
     {
@@ -43,3 +56,5 @@ void loop(void)
 
     delay(1000);
 }
+
+
