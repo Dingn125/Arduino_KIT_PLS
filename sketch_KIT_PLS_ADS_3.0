@@ -1,0 +1,156 @@
+#include <SDI12.h>  
+    
+#include <Wire.h>
+#include <DFRobot_ADS1115.h>
+
+DFRobot_ADS1115 ads(&Wire);
+
+
+    #define SERIAL_BAUD 115200    
+    #define DATA_PIN 12        
+    
+    SDI12 mySDI12(DATA_PIN); 
+    
+    //SDI 12 commands
+    #define myComAdress   "?!"    //ask the adress of the probe
+    #define myComId       "0I!"   //ask the identification
+    #define myComMeasure  "0M!"   //ask to start a measurement
+    #define myComSend     "0D0!"  //ask to send the measure
+    #define myComSetUnitCM  "0OSU+0!"  //set the unit
+    #define myComUnit     "0OSU!" //ask for the unit of the measure, +0=m, +1=cm, +2=ft, +3=mbar, +4=psi
+
+
+String readsensor(){ 
+  String sdiResponse = "";
+  delay(30);
+  while(mySDI12.available()){    
+    char c = mySDI12.read();
+    if ((c != '\n') && (c != '\r')) { sdiResponse += c; delay(5); }    
+  }
+  return sdiResponse;
+}
+
+void measREFsensor(){
+  delay(300);      
+  mySDI12.sendCommand(myComMeasure);
+  while(mySDI12.available()){ mySDI12.read();}    
+  delay(1000);    
+  mySDI12.clearBuffer();   
+  delay(500);
+  mySDI12.sendCommand(myComSend);  
+  delay(50);
+  String rawdata = readsensor();
+  mySDI12.clearBuffer();   
+  delay(50); 
+  
+  //Decoding string sent from probe  
+  int p=0;
+  int pos[] = {0,0};
+  for (int z=0 ; z<rawdata.length() ; z++)  {
+    char u = rawdata.charAt(z);
+    if (u == '+' || u == '-') {
+      pos[p] = z ;
+      p++; 
+    } 
+    delay (50);
+  }    
+
+  float RealRefLevel = (rawdata.substring(pos[0],pos[1])).toFloat()-1;  //Water level from the reference sensor (without correction)
+  String Temperature = rawdata.substring(pos[1],rawdata.length()); //Water temperature from the reference sensor
+   
+  Serial.print("PLS Raw Data:");
+  Serial.println(rawdata);
+  delay(50);                         
+}
+
+void measADS1115()
+{
+ if (ads.checkADS1115())
+    {
+        int16_t adc0, adc1, adc2, adc3;
+        adc0 = ads.readVoltage(0);
+        Serial.print("A0:");
+        Serial.print(adc0);
+        Serial.print("mV,  ");
+        adc1 = ads.readVoltage(1);
+        Serial.print("A1:");
+        Serial.print(adc1);
+        Serial.print("mV,  ");
+        adc2 = ads.readVoltage(2);
+        Serial.print("A2:");
+        Serial.print(adc2);
+        Serial.print("mV,  ");
+        adc3 = ads.readVoltage(3);
+        Serial.print("A3:");
+        Serial.print(adc3);
+        Serial.println("mV");
+    }
+    else
+    {
+        Serial.println("ADS1115 Disconnected!");
+}
+}
+void StartRefSensor(){
+  mySDI12.begin();
+  delay(2000); 
+  
+  Serial.print(F("'**** Identification of the sensor: "));
+  mySDI12.sendCommand(myComId);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+  
+  Serial.print(F("'**** Adress of the sensor: "));
+  mySDI12.sendCommand(myComAdress);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+
+  Serial.print(F("'**** Set the unit of the sensor to be m: "));
+  mySDI12.sendCommand(myComSetUnitCM);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+  
+  Serial.print(F("'**** Unit 0+(0=m, 1=cm, 2=ft, 3=mbar, 4=psi): "));  
+  mySDI12.sendCommand(myComUnit);
+  delay(300);
+  Serial.println(readsensor());
+  delay(500);
+  mySDI12.clearBuffer();
+  }
+  
+
+void StartADSSensor()
+{
+    ads.setAddr_ADS1115(ADS1115_IIC_ADDRESS1);   // 0x48
+    ads.setGain(eGAIN_TWOTHIRDS);   // 2/3x gain
+    ads.setMode(eMODE_SINGLE);       // single-shot mode
+    ads.setRate(eRATE_128);          // 128SPS (default)
+    ads.setOSMode(eOSMODE_SINGLE);   // Set to start a single-conversion
+    ads.init();
+}
+
+    void setup() {
+      Serial.begin(115200);
+      while (!Serial) {
+   ; // wait for serial port to connect. Needed for native USB 
+   }
+      StartRefSensor();
+      StartADSSensor();
+    }
+
+void loop() {
+      
+   measREFsensor();
+  for (int i = 0; i <= 20; i++){
+    delay(100);
+    measADS1115();
+    delay(100);
+}
+   measREFsensor();
+  while(1){}
+}
