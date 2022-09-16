@@ -1,17 +1,13 @@
-#include <SDI12.h>  
-    
-#include <Wire.h>
+#include <SDI12.h>  //library for OTT PLS
+#define SERIAL_BAUD 115200    
+#define DATA_PIN 12 
+SDI12 mySDI12(DATA_PIN); 
+
 
 #include "ADS1X15.h" //https://github.com/RobTillaart/ADS1X15
 ADS1115 ADS(0x48);  // ADS1115 physically defined at address 0x48
 
 
-
-    #define SERIAL_BAUD 115200    
-    #define DATA_PIN 12        
-    
-    SDI12 mySDI12(DATA_PIN); 
-    
     //SDI 12 commands
     #define myComAdress   "?!"    //ask the adress of the probe
     #define myComId       "0I!"   //ask the identification
@@ -64,8 +60,7 @@ void measREFsensor(){
   delay(50);                         
 }
 
-void measADS1115()
-{
+void measADS1115(){
   // Request for voltage measurement at the ADC (results between -32768 and +32767)
   int16_t count_A0 = ADS.readADC(0);           // Voltage measurement of pin A0, relative to ground
   int16_t count_A1 = ADS.readADC(1);           // Voltage measurement of pin A1, relative to ground 
@@ -77,8 +72,8 @@ void measADS1115()
   Serial.print("\tAnalog2: "); Serial.print(count_A2); Serial.print('\t'); Serial.println(count_A2 * f, 30);
   Serial.print("\tAnalog3: "); Serial.print(count_A3); Serial.print('\t'); Serial.println(count_A3 * f, 30);
   Serial.println();
-  delay(1000);
-}
+  delay(500);
+  }
 
 void StartRefSensor(){
   mySDI12.begin();
@@ -113,15 +108,15 @@ void StartRefSensor(){
   mySDI12.clearBuffer();
   }
   
-
-void StartADSSensor()
-{
-   ADS.begin();
+void StartADSSensor() {
+  Serial.begin(115200);
+  ADS.begin();
   ADS.setGain(1);      // We take the lowest gain (index 1), to have the measurement range 4.096 volt
   ADS.setMode(1);      // The ADC is told that measurements will be taken on demand, not continuously (0 = CONTINUOUS, 1 = SINGLE)
   ADS.setDataRate(7);  // We specify the speed of voltage measurement we want, from 0 to 7 (7 being the fastest, that is 860 samples per second)
   ADS.readADC(0);      // And we do an empty reading, to send all these parameters
 }
+
 
     void setup() {
       Serial.begin(115200);
